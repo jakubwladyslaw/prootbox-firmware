@@ -1,0 +1,15 @@
+{
+  "name": "Laptimer (LilyGo T-Display-S3) — Ameryka Poludniowa",
+  "version": "05.09.2026 11:20",
+  "commit": "e7acfca",
+  "region": "south-america",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32-S3",
+      "parts": [
+        { "path": "merged-firmware-south-america.bin", "offset": 0 }
+      ]
+    }
+  ]
+}

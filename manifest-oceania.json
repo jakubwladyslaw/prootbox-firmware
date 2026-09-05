@@ -1,0 +1,15 @@
+{
+  "name": "Laptimer (LilyGo T-Display-S3) — Oceania",
+  "version": "05.09.2026 11:20",
+  "commit": "e7acfca",
+  "region": "oceania",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32-S3",
+      "parts": [
+        { "path": "merged-firmware-oceania.bin", "offset": 0 }
+      ]
+    }
+  ]
+}

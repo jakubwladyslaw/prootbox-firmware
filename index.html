@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRÖÖT Laptimer — instrukcja i wgrywanie firmware</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='18' r='11' fill='%23d92d20'/%3E%3Crect x='13' y='2' width='6' height='4' rx='1' fill='%23d92d20'/%3E%3Cpath d='M16 12v6h5' stroke='%23fff' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<!-- Web Serial dziala tylko z HTTPS (albo localhost) i tylko w Chrome/Edge na desktopie. -->
+<script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+<link rel="stylesheet" href="./style.css">
+<style>
+  /* Tylko to, czego nie ma na stronie budowy: makiety ekranu i karta flashera. */
+  .flash { text-align: center; }
+
+  /* --- Makiety ekranu 320x170 --- */
+  .screens { display: grid; gap: 1.4rem; }
+  .shot { display: grid; grid-template-columns: 1fr; gap: .7rem; align-items: start; }
+  @media (min-width: 40rem) { .shot { grid-template-columns: 17rem 1fr; } }
+  .screen {
+    position: relative;
+    aspect-ratio: 320 / 170;
+    background: #000;
+    border-radius: 9px;
+    border: 2px solid var(--line);
+    container-type: inline-size;
+    overflow: hidden;
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    color: #fff;
+  }
+  .screen span { position: absolute; white-space: nowrap; line-height: 1; font-size: 4.4cqw; }
+  .cy { color: #35d6e8; } .rd { color: #ff4b3e; } .gy { color: #8d939c; }
+  .gr { color: #3ddc6b; } .or { color: #ffa53a; } .ye { color: #ffe14d; } .wh { color: #fff; }
+  /* Wyzsza specyficznosc niz ".screen span", inaczej bazowy rozmiar wygrywa. */
+  .screen span.big  { font-size: 15cqw; font-weight: 700; }
+  .screen span.huge { font-size: 21cqw; font-weight: 700; }
+  .screen.delta { background: #1f9e4b; }
+  .screen.delta.slow { background: #c0392b; }
+  .shot-desc { font-size: .92rem; }
+  .shot-desc ul { padding-left: 1.1rem; }
+  .shot-desc li { margin-bottom: .3rem; }
+</style>
+</head>
+<body>
+<main>
+
+  <div class="hero">
+    <img src="./proot_racing_logo.png" alt="PRÖÖT RACING — logo z niebieskim słoniem" width="900" height="645">
+    <div class="hero-cap">
+      <h1>PRÖÖT Laptimer</h1>
+      <p class="sub">Pomiar czasów okrążeń z RaceBoxa na LilyGo T-Display-S3 — instrukcja obsługi i wgrywanie firmware.</p>
+    </div>
+  </div>
+
+  <div class="card flash">
+    <p class="pick">
+      <label for="region">Region (tory wpisane w firmware):</label>
+      <!-- autocomplete=off: bez tego przeglądarka po odświeżeniu przywraca poprzedni wybór
+           i strona przestaje startować od Europy. -->
+      <select id="region" autocomplete="off">
+        <option value="europe" selected>Europa</option>
+        <option value="north-america">Ameryka Północna</option>
+        <option value="south-america">Ameryka Południowa</option>
+        <option value="asia">Azja (z Bliskim Wschodem)</option>
+        <option value="africa">Afryka</option>
+        <option value="oceania">Oceania</option>
+      </select>
+      <span class="note" id="trackCount"></span>
+    </p>
+    <esp-web-install-button manifest="./manifest-europe.json">
+      <button class="primary" slot="activate">Podłącz i wgraj firmware</button>
+      <p slot="unsupported" class="warn">
+        Ta przeglądarka nie obsługuje Web Serial. Użyj <strong>Chrome</strong> lub <strong>Edge</strong>
+        na komputerze (Firefox i Safari tego nie mają, mobilne też nie).
+      </p>
+      <p slot="not-allowed" class="warn">
+        Wgrywanie wymaga połączenia po HTTPS.
+      </p>
+    </esp-web-install-button>
+    <p class="note" id="meta">Wersja: sprawdzam…</p>
+    <p class="note" id="metaNote" style="margin:.2rem 0 0">
+      Ten sam napis zobaczysz po wgraniu na dole dashboardu jako <code>SW</code> — ze skrótem regionu na końcu.
+    </p>
+  </div>
+
+  <div class="card" id="regiony">
+    <h2>Który region wybrać</h2>
+    <p>
+      Cała baza torów świata nie zmieściłaby się w pamięci płytki, więc firmware jest wydany
+      w <strong>sześciu wariantach</strong> — każdy zawiera tory jednego regionu. Wybierz ten,
+      w którym jeździsz; jeśli jeździsz w Europie, zostaw <strong>Europę</strong> (wariant domyślny).
+    </p>
+    <ul>
+      <li><strong>Tory z innych regionów nie będą rozpoznane.</strong> Gdy w promieniu
+        <strong>20 km</strong> od Twojej pozycji nie ma żadnego toru z wgranej listy, urządzenie
+        nie ustawia linii startu/mety: pole toru na dashboardzie zostaje puste, a
+        <strong>pomiar okrążeń nie startuje</strong>. Delta i czasy też nie — nie ma od czego liczyć.</li>
+      <li><strong>Turcja, Rosja, Ukraina, Cypr, Gruzja</strong> siedzą w Europie, a
+        <strong>Bliski Wschód</strong> (ZEA, Katar, Bahrajn, Arabia Saudyjska…) w Azji.
+        <strong>Meksyk, Ameryka Środkowa i Karaiby</strong> — w Ameryce Północnej.</li>
+      <li><strong>Po wgraniu widać, co siedzi na płytce:</strong> numer softu na dole dashboardu
+        kończy się skrótem regionu — <code>EU</code>, <code>NA</code>, <code>SA</code>,
+        <code>AS</code>, <code>AF</code>, <code>OC</code>.</li>
+      <li><strong>Zmiana regionu</strong> to zwykłe wgranie z tej strony: wybierz inny region i kliknij
+        przycisk. Obraz zawiera bootloader i tablicę partycji, więc wgranie jest
+        <strong>pełne i kasujące</strong> — zapamiętanego RaceBoxa trzeba potem wybrać od nowa.</li>
+    </ul>
+    <p class="tip" style="margin-bottom:0">
+      Lista torów bierze się z bazy RaceBoxa, po jednym wpisie na konfigurację toru (osobne linie
+      startu/mety wariantów są rozpoznawane niezależnie, np. <code>Deauville</code> i
+      <code>Deauville small</code>).
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Nie masz jeszcze urządzenia?</h2>
+    <p style="margin-bottom:0">
+      Ta strona wgrywa firmware na gotową płytkę. Jeśli dopiero chcesz sobie taki laptimer złożyć —
+      <a href="./budowa.html"><strong>zobacz co kupić i jak to poskładać</strong></a>: wersja podstawowa
+      (sama płytka, zasilanie z USB) i wersja z baterią, z linkami do części.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Zanim klikniesz</h2>
+    <ol>
+      <li><strong>Kabel musi przesyłać dane.</strong> Kabel „tylko do ładowania” nie pokaże żadnego portu.</li>
+      <li>Podłącz płytkę do USB i kliknij przycisk — w oknie wyboru portu wskaż urządzenie
+        <code>303A:1001</code>.</li>
+      <li><strong>Jeśli portu nie widać albo połączenie zrywa się w kółko</strong>, wejdź w tryb bootloadera
+        ręcznie: przytrzymaj <strong>BOOT</strong>, krótko naciśnij <strong>RESET</strong>, puść
+        <strong>BOOT</strong> — i spróbuj ponownie. Płytka ma natywne USB, więc automatyczny reset
+        z przeglądarki bywa zawodny.</li>
+      <li>Po zakończeniu naciśnij <strong>RESET</strong>, żeby uruchomić nowy firmware.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>Jak to działa</h2>
+    <p>
+      Urządzenie <strong>nie ma własnego GPS</strong>. Łączy się po Bluetooth z <strong>RaceBoxem</strong>
+      (Mini / Mini S / Micro) i na bieżąco czyta z niego pozycję 25 razy na sekundę. Z tych punktów sam liczy
+      przejazdy przez linię startu/mety, czasy okrążeń i <strong>żywą deltę</strong> — o ile jesteś szybszy
+      lub wolniejszy niż na swoim najlepszym okrążeniu, w tym samym miejscu toru.
+    </p>
+    <p>
+      RaceBox robi swoje niezależnie: przyciskiem na płytce możesz włączyć jego <strong>wewnętrzne nagrywanie</strong>
+      (standalone recording), żeby zapis sesji został w pamięci RaceBoxa do późniejszej analizy w aplikacji.
+    </p>
+    <p class="note">
+      Tory są wpisane w firmware — w wariancie <strong>regionalnym</strong>
+      (<a href="#regiony">który wybrać</a>). Urządzenie samo bierze <strong>najbliższy</strong> tor
+      z listy i ustawia jego linię startu/mety; dopóki nie przejedziesz przez metę, wybór może się
+      jeszcze przestawić na bliższy tor, potem jest już zablokowany. Jeśli żaden tor z wgranej listy
+      nie jest bliżej niż <strong>20 km</strong>, linia nie zostaje ustawiona i pomiar nie rusza.
+    </p>
+  </div>
+
+  <div class="card" id="pierwsze-uruchomienie">
+    <h2>Pierwsze uruchomienie</h2>
+    <ol class="flow">
+      <li>
+        <strong>Włącz RaceBoxa</strong> i połóż go tak, żeby „widział” niebo (dach, deska rozdzielcza).
+        Nie może być połączony z telefonem — jednocześnie gada tylko z jednym urządzeniem.
+      </li>
+      <li>
+        <strong>Włącz płytkę</strong> — podłącz USB / powerbank albo, jeśli jest uśpiona, naciśnij
+        <kbd>dolny</kbd> przycisk. Na ekranie pojawi się słoń i napis <code>Szukam RaceBox...</code>.
+      </li>
+      <li>
+        <strong>Wybierz RaceBoxa z listy.</strong> <kbd>dolny</kbd> = w dół, <kbd>górny</kbd> = w górę,
+        zaznaczenie jest żółte. <strong>Przytrzymaj <kbd>górny</kbd> przez 2 s</strong>, żeby zatwierdzić.
+      </li>
+      <li>
+        <strong>Poczekaj na fix.</strong> Po połączeniu wchodzi dashboard. Na zimnym starcie RaceBox
+        potrzebuje kilkudziesięciu sekund; do tego czasu <code>Fix brak</code> i zerowe współrzędne
+        (to normalne, w garażu fixa nie będzie w ogóle).
+      </li>
+      <li>
+        <strong>Jedź.</strong> Pomiar rusza sam przy pierwszym przecięciu linii startu/mety. Tor zostaje
+        wybrany automatycznie przy pierwszym fixie.
+      </li>
+    </ol>
+    <p class="tip">
+      Wybrany RaceBox jest <strong>zapamiętywany</strong>. Przy kolejnym starcie urządzenie pomija listę
+      i od razu pokazuje <code>Laczenie...</code>. Żeby o nim zapomnieć i wrócić do listy —
+      trzymaj <kbd>dolny</kbd> przycisk w momencie włączania (ok. 1,5 s), aż mignie <code>Reset RaceBox</code>.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Przyciski</h2>
+    <p class="note">
+      Płytka ma dwa przyciski po bokach gniazda USB. <kbd>dolny</kbd> to ten przy USB (GPIO14),
+      <kbd>górny</kbd> to <strong>BOOT</strong>. Ich znaczenie zależy od tego, czy jesteś na liście
+      wyboru RaceBoxa, czy już połączony.
+    </p>
+    <div class="tw">
+      <table>
+        <thead>
+          <tr><th>Przycisk</th><th>Krótkie naciśnięcie</th><th>Przytrzymanie ~2 s</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th><kbd>dolny</kbd><br><span class="note">GPIO14, przy USB</span></th>
+            <td>
+              <strong>Na liście:</strong> zaznaczenie w dół.<br>
+              <strong>Po połączeniu:</strong> włącz / wyłącz nagrywanie w RaceBoxie (pole <code>REC</code>).
+            </td>
+            <td><strong>Wyłączenie urządzenia</strong> — w obu trybach.</td>
+          </tr>
+          <tr>
+            <th><kbd>górny</kbd><br><span class="note">BOOT</span></th>
+            <td>
+              <strong>Na liście:</strong> zaznaczenie w górę.<br>
+              <strong>Po połączeniu:</strong> następny ekran (dashboard → delta → okrążenia → dashboard).
+            </td>
+            <td><strong>Na liście:</strong> zatwierdź zaznaczony RaceBox.<br><strong>Po połączeniu:</strong> nic.</td>
+          </tr>
+          <tr>
+            <th><kbd>dolny</kbd> przy włączaniu</th>
+            <td colspan="2">Trzymany od momentu włączenia przez ~1,5 s <strong>kasuje zapamiętanego RaceBoxa</strong>
+              (na ekranie <code>Reset RaceBox</code>) i wraca do listy wyboru.</td>
+          </tr>
+          <tr>
+            <th><kbd>RESET</kbd></th>
+            <td colspan="2">Restart firmware. Kasuje sesję: okrążenia, deltę i <strong>wybór toru</strong>
+              (przydatne, gdy urządzenie trafiło w zły tor).</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Ekrany</h2>
+    <p class="note" style="margin-bottom:1.3rem">Przełączasz je krótkim naciśnięciem <kbd>górny</kbd>, w kółko.</p>
+
+    <div class="screens">
+
+      <div>
+        <h3>1. Dashboard — wszystko naraz</h3>
+        <div class="shot">
+          <div class="screen">
+            <span class="cy"  style="left:2%;  top:1.5%">RaceBox Mini S</span>
+            <span class="rd"  style="left:64%; top:1.5%">REC:ON</span>
+            <span class="big" style="left:2%;  top:14%">0:38.42</span>
+            <span class="gr"  style="left:70%; top:26%; font-size:7cqw">-0.21s</span>
+            <span class="gy"  style="left:2%;  top:43%">Best 1:45.00  Last 1:46.02  L3</span>
+            <span class="gr"  style="left:2%;  top:55%">Fix 3D  Sat 14  128.4 km/h</span>
+            <span class="gy"  style="left:2%;  top:67%">52.401234, 16.912345</span>
+            <span class="or"  style="left:67%; top:67%">Poznan</span>
+            <span class="gr"  style="left:2%;  top:79%">RB 87%</span>
+            <span class="or"  style="left:26%; top:79%">DEV 43%</span>
+            <span class="gy"  style="left:2%;  top:90.5%">SW 30.07.2026 20:41 EU</span>
+          </div>
+          <div class="shot-desc">
+            <ul>
+              <li><strong>Góra:</strong> nazwa RaceBoxa i <code>REC</code> — czerwone <code>ON</code> (nagrywa),
+                pomarańczowa <code>PAUZA</code>, szare <code>OFF</code>.</li>
+              <li><strong>Duży czas</strong> to trwające okrążenie, obok <strong>delta</strong>:
+                zielona = szybciej niż best, czerwona = wolniej, <code>--</code> gdy nie ma jeszcze do czego porównać.</li>
+              <li><code>Best</code> / <code>Last</code> / <code>L</code> — najlepsze, ostatnie, licznik okrążeń.</li>
+              <li><code>Fix 3D</code> i liczba satelitów — <span class="note">zielone znaczy „można jechać”</span>.</li>
+              <li>Na dole pozycja, wybrany tor (pomarańczowo — <strong>pusto</strong>, jeśli w promieniu
+                20 km nie ma toru z wgranego regionu), baterie i wersja softu ze
+                <strong>skrótem regionu</strong> (<code>EU</code>, <code>NA</code>, <code>SA</code>,
+                <code>AS</code>, <code>AF</code>, <code>OC</code>).</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3>2. Delta — do patrzenia kątem oka</h3>
+        <div class="shot">
+          <div class="screen delta">
+            <span class="huge" style="left:50%; top:28%; transform:translate(-50%,-50%)">-0.42</span>
+            <span class="big"  style="left:50%; top:75%; transform:translate(-50%,-50%); font-size:18cqw">0:38.42</span>
+          </div>
+          <div class="shot-desc">
+            <ul>
+              <li><strong>Całe tło</strong> jest sygnałem: <span style="color:#1f9e4b;font-weight:600">zielone</span>
+                = jedziesz szybciej niż na best lapie,
+                <span style="color:#c0392b;font-weight:600">czerwone</span> = wolniej, szare = brak porównania.</li>
+              <li>Wielka liczba to strata/zysk w sekundach <em>w tym punkcie toru</em>, pod nią czas
+                bieżącego okrążenia.</li>
+              <li>Przez <strong>10 s po przecięciu mety</strong> dolny czas robi się
+                <span class="ye" style="background:#333;padding:0 .2rem;border-radius:3px">żółty</span>
+                i pokazuje czas właśnie zakończonego okrążenia.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3>3. Lista okrążeń — po sesji</h3>
+        <div class="shot">
+          <div class="screen">
+            <span class="gr" style="left:2%;  top:2%">1 1:45.00</span>
+            <span class="wh" style="left:2%;  top:13%">4 1:45.17</span>
+            <span class="wh" style="left:2%;  top:24%">2 1:45.54</span>
+            <span class="wh" style="left:2%;  top:35%">6 1:45.58</span>
+            <span class="wh" style="left:2%;  top:46%">3 1:46.02</span>
+            <span class="wh" style="left:35%; top:2%">5 1:46.07</span>
+            <span class="wh" style="left:35%; top:13%">8 1:46.44</span>
+            <span class="wh" style="left:35%; top:24%">7 1:46.66</span>
+            <span class="rd" style="left:35%; top:35%">9 1:48.18</span>
+          </div>
+          <div class="shot-desc">
+            <ul>
+              <li>Czasy <strong>posortowane od najszybszego</strong>, czytane kolumnami. Liczba z przodu
+                to numer okrążenia.</li>
+              <li><span class="gr" style="background:#333;padding:0 .2rem;border-radius:3px">Zielony</span>
+                = najlepsze, <span class="rd" style="background:#333;padding:0 .2rem;border-radius:3px">czerwony</span>
+                = najwolniejsze z pokazanych.</li>
+              <li>Mieści się <strong>27 najszybszych</strong> okrążeń — wolniejsze wypadają z listy.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Nagrywanie w RaceBoxie (REC)</h2>
+    <p>
+      Krótkie naciśnięcie <kbd>dolny</kbd> po połączeniu przełącza <strong>wewnętrzny zapis RaceBoxa</strong>.
+      Dane lądują w jego pamięci, a nie na płytce — ściągniesz je potem aplikacją RaceBoxa.
+      Pomiar okrążeń na ekranie działa niezależnie od tego, czy <code>REC</code> jest włączony.
+    </p>
+    <p class="note" style="margin-bottom:0">
+      Stan <code>PAUZA</code> też liczy się jako „aktywne” — kolejne naciśnięcie wyłącza zapis.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Wyłączanie i zasilanie</h2>
+    <ul>
+      <li><strong>Wyłączenie:</strong> przytrzymaj <kbd>dolny</kbd> przez 2 s — pokaże się
+        <code>Wylaczanie...</code> i ekran gaśnie. To głębokie uśpienie (pobór rzędu µA), nie odcięcie zasilania.</li>
+      <li><strong>Włączenie:</strong> naciśnij <kbd>dolny</kbd>. Urządzenie startuje od zera —
+        okrążenia i wybór toru z poprzedniej sesji przepadają, zapamiętany RaceBox zostaje.</li>
+      <li><strong>Baterie na dashboardzie:</strong> <code>RB</code> to RaceBox, <code>DEV</code> to płytka.
+        Zielony powyżej 50%, pomarańczowy poniżej, czerwony poniżej 20%.</li>
+      <li><strong>Na USB</strong> nie da się zmierzyć procentu ogniwa płytki — wtedy widać
+        <code>DEV chrg</code> albo ostatnią znaną wartość z <code>+</code>.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>Gdy coś nie gra</h2>
+    <dl>
+      <dt>Ekran stoi na <code>Szukam RaceBox...</code></dt>
+      <dd>RaceBox wyłączony albo już połączony z telefonem/aplikacją. Rozłącz go tam i poczekaj chwilę.</dd>
+
+      <dt>Stoi na <code>Laczenie...</code></dt>
+      <dd>Zapamiętanego RaceBoxa nie ma w zasięgu. Włącz go — połączy się sam. Jeśli to nie ten
+        RaceBox, skasuj zapamiętany (trzymaj <kbd>dolny</kbd> przy włączaniu).</dd>
+
+      <dt><code>Fix brak</code>, współrzędne 0.000000</dt>
+      <dd>RaceBox nie ma jeszcze pozycji. Pod dachem nie złapie — wystaw go na otwarte niebo
+        i daj minutę.</dd>
+
+      <dt>Czas okrążenia nie startuje</dt>
+      <dd>Pomiar rusza dopiero po przecięciu linii startu/mety wybranego toru. Sprawdź, czy nazwa toru
+        na dashboardzie (pomarańczowa) jest właściwa.</dd>
+
+      <dt>Pole toru jest <strong>puste</strong></dt>
+      <dd>Żaden tor z wgranej listy nie jest bliżej niż 20 km — najczęściej znaczy to
+        <strong>zły region firmware'u</strong> (albo tor, którego nie ma w bazie RaceBoxa).
+        Wgraj <a href="#regiony">wariant właściwy dla swojego kontynentu</a>; sprawdź skrót regionu
+        na końcu numeru softu.</dd>
+
+      <dt>Zły tor</dt>
+      <dd>Dopóki nie przejedziesz przez metę, urządzenie samo przestawi się na bliższy tor.
+        Po pierwszym przejeździe wybór jest zablokowany do restartu — wtedy naciśnij <kbd>RESET</kbd>
+        już na miejscu, przy złapanym GPS-ie.</dd>
+
+      <dt>Delta pokazuje <code>--</code></dt>
+      <dd>Nie ma jeszcze najlepszego okrążenia. Delta pojawia się po przejechaniu pierwszego pełnego kółka.</dd>
+
+      <dt>Czarny ekran po włączeniu</dt>
+      <dd>Naciśnij <kbd>RESET</kbd>. Jeśli nie pomaga — sprawdź zasilanie i wgraj firmware ponownie.</dd>
+    </dl>
+  </div>
+
+  <div class="card">
+    <h2>Ten build</h2>
+    <dl>
+      <dt>Płytka</dt><dd>LilyGo T-Display-S3 (ESP32-S3, 16 MB flash)</dd>
+      <dt>Region</dt><dd id="buildRegion">Europa</dd>
+      <dt>Obraz</dt><dd><a id="binLink" href="./merged-firmware-europe.bin" download>merged-firmware-europe.bin</a> — pełny zrzut od offsetu 0x0</dd>
+      <dt>Manifest</dt><dd><a id="manifestLink" href="./manifest-europe.json">manifest-europe.json</a></dd>
+    </dl>
+    <p class="note" style="margin-bottom:0">
+      Obraz zawiera bootloader, tablicę partycji, otadata i aplikację, więc nadpisuje całą pamięć —
+      standalone recording zapisany w RaceBoxie tego nie dotyczy, ale <strong>zapamiętany RaceBox</strong>
+      i tak trzeba będzie wybrać od nowa.
+    </p>
+  </div>
+
+  <footer>
+    <p><a href="./budowa.html">Jak zbudować takie urządzenie →</a></p>
+    <p>PRÖÖT RACING :D</p>
+  </footer>
+</main>
+
+<script type="module">
+  const sel      = document.getElementById('region');
+  const count    = document.getElementById('trackCount');
+  const meta     = document.getElementById('meta');
+  const metaNote = document.getElementById('metaNote');
+  // Czyste nazwy regionow zapamietane PRZED dopisaniem do nich liczby torow.
+  const LABELS = Object.fromEntries([...sel.options].map(o => [o.value, o.textContent.trim()]));
+
+  // Liczby torow z regions.json (generowany razem z tablicami torow, kopiowany obok manifestow —
+  // ten sam origin, wiec bez CORS). Strona musi dzialac takze BEZ niego: swiezo po pierwszym
+  // deployu Pages/CDN potrafi trzymac zacache'owane 404 przez ~10 min. Wtedy zostaja same nazwy.
+  let regions = [];
+  try {
+    const r = await fetch('./regions.json', { cache: 'no-store' });
+    if (r.ok) {
+      const j = await r.json();
+      regions = Array.isArray(j) ? j : (Array.isArray(j.regions) ? j.regions : []);
+    }
+  } catch { /* brak liczb, nazwy zostaja */ }
+
+  const tracksOf = slug => {
+    const e = regions.find(x => x && x.slug === slug);
+    const n = e ? Number(e.trackCount) : NaN;
+    return Number.isFinite(n) && n > 0 ? n : null;
+  };
+  const torow = n => {
+    if (n === 1) return 'tor';
+    const d = n % 10, s = n % 100;
+    return (d >= 2 && d <= 4 && (s < 12 || s > 14)) ? 'tory' : 'torów';
+  };
+
+  for (const o of sel.options) {
+    const n = tracksOf(o.value);
+    if (n) o.textContent = `${LABELS[o.value]} (${n} ${torow(n)})`;
+  }
+
+  // Wersja i data pochodzą z manifestu WYBRANEGO regionu, żeby strona nie kłamała po deployu.
+  let req = 0;
+  async function showVersion(slug) {
+    const mine = ++req;
+    meta.textContent = 'Wersja: sprawdzam…';
+    metaNote.hidden = false;
+    try {
+      const r = await fetch(`./manifest-${slug}.json`, { cache: 'no-store' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const m = await r.json();
+      if (mine !== req) return; // odpowiedz dla poprzedniego wyboru — ignorujemy
+      // version = numer softu (ten sam, ktory plytka pokazuje jako SW); commit = krotki SHA.
+      meta.textContent = `Wersja: ${m.version}` + (m.commit ? `  ·  commit ${m.commit}` : '');
+    } catch {
+      if (mine !== req) return;
+      meta.textContent = 'Nie udało się odczytać manifestu.';
+      metaNote.hidden = true; // bez wersji ta uwaga tylko myli
+    }
+  }
+
+  // ESP Web Tools czyta manifest przy inicjalizacji elementu, a podmiana samego atrybutu na
+  // dzialajacym elemencie bywa ignorowana — dlatego przycisk ODTWARZAMY. Dzieci (przycisk
+  // "activate" i komunikaty ze slotow) przenosimy ze starego elementu, zeby nie duplikowac
+  // markupu w JS; dzieki temu bez JS strona nadal wgrywa Europe z atrybutu w HTML-u.
+  function setRegion(slug) {
+    const old = document.querySelector('esp-web-install-button');
+    const fresh = document.createElement('esp-web-install-button');
+    fresh.setAttribute('manifest', `./manifest-${slug}.json`);
+    while (old.firstChild) fresh.appendChild(old.firstChild);
+    old.replaceWith(fresh);
+
+    const bin = document.getElementById('binLink');
+    bin.href = `./merged-firmware-${slug}.bin`;
+    bin.textContent = `merged-firmware-${slug}.bin`;
+    const man = document.getElementById('manifestLink');
+    man.href = `./manifest-${slug}.json`;
+    man.textContent = `manifest-${slug}.json`;
+    document.getElementById('buildRegion').textContent = LABELS[slug];
+
+    const n = tracksOf(slug);
+    count.textContent = n ? `${n} ${torow(n)} w tym regionie` : '';
+    showVersion(slug);
+  }
+
+  sel.addEventListener('change', () => setRegion(sel.value));
+  setRegion(sel.value);
+</script>
+</body>
+</html>

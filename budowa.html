@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRÖÖT Laptimer — jak zbudować</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='18' r='11' fill='%23d92d20'/%3E%3Crect x='13' y='2' width='6' height='4' rx='1' fill='%23d92d20'/%3E%3Cpath d='M16 12v6h5' stroke='%23fff' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="./style.css">
+<style>
+  /* Tylko rzeczy specyficzne dla tej strony: lista czesci i mocne ostrzezenie. */
+  .parts th:last-child, .parts td:last-child { text-align: right; white-space: nowrap; }
+  .parts tbody th { white-space: normal; min-width: 11rem; }
+  .parts .opt { color: var(--muted); font-weight: 400; }
+
+  .danger {
+    border: 1px solid var(--accent);
+    border-left-width: 4px;
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    margin: 0 0 1.1rem;
+    background: color-mix(in srgb, var(--accent) 7%, transparent);
+  }
+  .danger strong { color: var(--accent); }
+  .danger p:last-child { margin-bottom: 0; }
+
+  .total {
+    display: flex; flex-wrap: wrap; gap: .4rem 1rem;
+    align-items: baseline; justify-content: space-between;
+    border-top: 1px solid var(--line); margin-top: .9rem; padding-top: .9rem;
+    font-size: .93rem;
+  }
+  .total b { font-size: 1.15rem; }
+</style>
+</head>
+<body>
+<main>
+
+  <div class="hero">
+    <img src="./proot_racing_logo.png" alt="PRÖÖT RACING — logo z niebieskim słoniem" width="900" height="645">
+    <div class="hero-cap">
+      <h1>Jak zbudować laptimer</h1>
+      <p class="sub">Co kupić, co z czym połączyć i w jakiej kolejności — wersja podstawowa i z baterią.</p>
+      <p class="crumb"><a href="./index.html">← Wróć do wgrywania firmware i instrukcji obsługi</a></p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>W skrócie</h2>
+    <p>
+      Laptimer to <strong>ekran do RaceBoxa</strong>. Sam nie ma GPS-u — łączy się po Bluetooth
+      z RaceBoxem, czyta z niego pozycję i liczy czasy okrążeń oraz żywą deltę.
+      Cała robota sprowadza się do trzech rzeczy: kupić płytkę, wgrać firmware z przeglądarki,
+      sparować z RaceBoxem. Wersja z baterią to dodatkowo jedno ogniwo Li-Po i dwa luty.
+    </p>
+    <p class="tip">
+      <strong>Czego potrzebujesz niezależnie od wersji:</strong> RaceBox (Mini, Mini S albo Micro),
+      kabel USB-C <strong>do przesyłu danych</strong> (ten „tylko do ładowania" nie pokaże portu
+      i nic nie wgrasz) oraz komputer z Chrome albo Edge — tylko one mają Web Serial.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Wersja podstawowa — lista zakupów</h2>
+    <div class="tw">
+      <table class="parts">
+        <thead>
+          <tr><th>Część</th><th>Po co</th><th>Cena</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th><a href="https://allegro.pl/oferta/esp32-s3-lilygo-t-display-s3-lcd-1-9-st7789-w-obudowie-15845999467">LilyGo T-Display-S3 w obudowie</a></th>
+            <td>Całe urządzenie: ESP32-S3, ekran 1,9″ 320×170, dwa przyciski, USB-C.
+              W obudowie ma 62 × 32 × 10 mm.</td>
+            <td>199,00 zł</td>
+          </tr>
+          <tr>
+            <th>RaceBox Mini / Mini S / Micro</th>
+            <td>Źródło pozycji GPS. Kupujesz osobno (racebox.pro) — bez niego laptimer nie ma
+              czego pokazywać.</td>
+            <td class="opt">osobno</td>
+          </tr>
+          <tr>
+            <th>Kabel USB-C <span class="opt">(do danych)</span></th>
+            <td>Do wgrania firmware, potem do zasilania i ładowania.</td>
+            <td class="opt">zwykle masz</td>
+          </tr>
+          <tr>
+            <th>Powerbank lub gniazdo USB w aucie</th>
+            <td>Zasilanie w trakcie jazdy, jeśli nie robisz wersji z baterią.</td>
+            <td class="opt">zwykle masz</td>
+          </tr>
+          <tr>
+            <th>Rzep lub taśma dwustronna</th>
+            <td>Przyklejenie urządzenia do deski / szyby tak, żeby nie latało po kabinie.</td>
+            <td class="opt">grosze</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Wersja podstawowa — krok po kroku</h2>
+    <ol class="flow">
+      <li>
+        <strong>Rozpakuj płytkę</strong> i podłącz ją kablem USB-C do komputera. Ekran zaświeci
+        fabrycznym demem LilyGo — to normalne, zaraz to nadpiszesz.
+      </li>
+      <li>
+        <strong>Wgraj firmware</strong> — wejdź na <a href="./index.html">stronę główną</a>
+        w Chrome albo Edge, kliknij „Podłącz i wgraj firmware" i wskaż urządzenie
+        <code>303A:1001</code>. Jeśli portu nie widać: przytrzymaj <kbd>BOOT</kbd>, mrugnij
+        <kbd>RESET</kbd>, puść <kbd>BOOT</kbd> i spróbuj ponownie.
+      </li>
+      <li>
+        <strong>Włącz RaceBoxa</strong> i upewnij się, że <em>nie</em> jest połączony z telefonem —
+        gada tylko z jednym urządzeniem naraz.
+      </li>
+      <li>
+        <strong>Sparuj</strong> — po starcie płytka pokaże listę wykrytych RaceBoxów. Wybierasz
+        dolnym/górnym przyciskiem, zatwierdzasz przytrzymaniem górnego przez 2 s. Wybór jest
+        zapamiętywany na stałe. Szczegóły:
+        <a href="./index.html#pierwsze-uruchomienie">pierwsze uruchomienie</a>.
+      </li>
+      <li>
+        <strong>Zasilanie w aucie</strong> — powerbank albo gniazdo USB. Płytka rusza od razu
+        po podaniu napięcia, nie ma osobnego włącznika.
+      </li>
+      <li>
+        <strong>Montaż</strong> — rzep na obudowie, ekran w polu widzenia, ale nie na wprost
+        oczu. RaceBox połóż tam, gdzie widzi niebo (deska rozdzielcza, dach).
+      </li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>Wersja z baterią — co dokupić</h2>
+    <p class="note">
+      Płytka ma na pokładzie ładowarkę Li-Po (TP4054, do ~580 mA) i gniazdo baterii, więc wystarczy
+      podpiąć ogniwo — ładuje się potem samo przez USB-C.
+    </p>
+    <div class="tw">
+      <table class="parts">
+        <thead>
+          <tr><th>Część</th><th>Po co</th><th>Cena</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th><a href="https://allegro.pl/oferta/akumulator-li-po-akyga-lp602158-3-7v-750mah-pcm-jst-2-54-18375297006">Akyga LP602158 — Li-Po 3,7 V 750 mAh z PCM</a></th>
+            <td>Ogniwo. Format 6 × 21 × 58 mm mieści się w obudowie. <strong>PCM</strong> to układ
+              zabezpieczający przed prze- i nadmiernym rozładowaniem oraz zwarciem — bierz ogniwo
+              z PCM, nie „gołe". Fabryczny przewód kończy się wtykiem <strong>JST 2.54</strong>,
+              który <em>nie pasuje</em> do płytki — stąd pozycja niżej.</td>
+            <td>21,12 zł</td>
+          </tr>
+          <tr>
+            <th><a href="https://allegro.pl/oferta/10x-gniazdo-micro-jst-1-25-mm-2pin-z-przewodem-100mm-zenskie-vcc-gnd-18402288068">Przewód z gniazdem Micro JST 1.25 mm 2-pin</a></th>
+            <td>Przejściówka na gniazdo baterii w płytce (raster 1,25 mm). Zestaw ma 10 sztuk —
+              potrzebujesz jednej, reszta zostaje na zapas.</td>
+            <td>44,90 zł</td>
+          </tr>
+          <tr>
+            <th>Multimetr</th>
+            <td><strong>Obowiązkowo</strong> — do sprawdzenia biegunowości. Bez niego nie zaczynaj,
+              patrz ostrzeżenie niżej.</td>
+            <td class="opt">narzędzie</td>
+          </tr>
+          <tr>
+            <th>Lutownica, cyna, koszulki termokurczliwe, obcinaczki</th>
+            <td>Dwa luty i dwie koszulki. Koszulki w dwóch rozmiarach: cienkie na pojedyncze żyły,
+              jedna grubsza na całość.</td>
+            <td class="opt">narzędzia</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="total">
+        <span>Elektronika razem (płytka + ogniwo + przewody):</span>
+        <b>≈ 265 zł</b>
+      </div>
+      <p class="note" style="margin-top:.5rem">
+        Ceny z Allegro na 30.07.2026, bez RaceBoxa i bez narzędzi. Sprawdź aktualne przed zakupem.
+      </p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Wersja z baterią — krok po kroku</h2>
+
+    <div class="danger">
+      <p><strong>Zanim cokolwiek wepniesz: biegunowość.</strong></p>
+      <p>
+        Wtyczka z ogniwa fizycznie pasuje do gniazda niezależnie od tego, czy plus jest po właściwej
+        stronie. Producent płytki wprost ostrzega, że <strong>kolory przewodów ogniwa nie muszą
+        odpowiadać wyprowadzeniom na płytce</strong>, a odwrotne podłączenie potrafi
+        <strong>trwale uszkodzić płytkę</strong>. Nie ma tu zabezpieczenia, które Cię uratuje.
+        Dlatego mierzysz miernikiem, a nie zgadujesz po kolorach.
+      </p>
+    </div>
+
+    <ol class="flow">
+      <li>
+        <strong>Zmierz, który pin gniazda baterii to plus.</strong> Podłącz płytkę do USB —
+        ładowarka wystawia wtedy na gniazdo baterii ok. 4,2 V. Dotknij sondami dwóch styków
+        gniazda: dodatni odczyt oznacza, że czerwona sonda stoi na plusie. Zanotuj, po której
+        stronie gniazda on jest (np. „bliżej krawędzi płytki").
+      </li>
+      <li>
+        <strong>Zmierz wtyk ogniwa</strong> — te same sondy na dwa styki fabrycznej wtyczki
+        JST 2.54. Zapamiętaj, <em>który przewód</em> jest plusem, a nie jakiego jest koloru.
+      </li>
+      <li>
+        <strong>Odetnij fabryczną wtyczkę — po jednym przewodzie naraz.</strong> Nigdy obu
+        jednocześnie: metalowe obcinaczki zewrą wtedy ogniwo. Odetnij jeden, zaizoluj albo odsuń,
+        dopiero potem drugi. Zostaw przy ogniwie ok. 3–4 cm przewodu.
+      </li>
+      <li>
+        <strong>Nasuń koszulki termokurczliwe zanim zaczniesz lutować</strong> (klasyczny błąd:
+        koszulka zostaje po drugiej stronie luta). Na każdą żyłę cienka, na całość jedna grubsza.
+      </li>
+      <li>
+        <strong>Zlutuj</strong> przewody ogniwa z przewodami gniazda JST 1.25 zgodnie ze zmierzoną
+        biegunowością — plus do plusa. Rób <strong>jedną żyłę na raz</strong> i od razu ją zaizoluj,
+        żeby gołe końce nigdy nie leżały obok siebie. Obkurcz koszulki.
+      </li>
+      <li>
+        <strong>Sprawdź gotowy wtyk miernikiem</strong>: powinno być ok. 3,7–4,2 V, z plusem po tej
+        stronie, którą wyznaczyłeś w kroku 1. To ostatni moment na wyłapanie pomyłki.
+      </li>
+      <li>
+        <strong>Wepnij ogniwo</strong> (bez USB). Ekran powinien wstać sam z siebie, a na dole
+        dashboardu pojawi się <code>DEV</code> z procentem baterii. Jeśli wtyczka luźno siedzi —
+        gniazdo na płytce bywa wersją z zatrzaskiem; ma trzymać, nie wypadać przy szarpnięciu kabla.
+      </li>
+      <li>
+        <strong>Naładuj przez USB-C.</strong> W trakcie ładowania zobaczysz <code>DEV chrg</code>
+        albo <code>DEV x% +</code> — przy podłączonym USB pin pomiarowy widzi napięcie ładowarki,
+        więc dokładnego procentu ogniwa wtedy się nie da odczytać. Pełne ładowanie 750 mAh
+        to jakieś 1,5–2 h.
+      </li>
+      <li>
+        <strong>Zamknij obudowę</strong> — ogniwo wchodzi do środka. Ułóż przewody tak, żeby
+        nic nie napierało na luty ani na samo ogniwo, i żeby nie zostały przyciśnięte przy
+        skręcaniu. Ogniwa Li-Po nie wolno zginać ani zgniatać.
+      </li>
+      <li>
+        <strong>Sprawdź, ile realnie jedzie.</strong> Licz na <strong>4–6 godzin</strong> ciągłej
+        pracy z 750 mAh — ekran świeci non stop, BLE trzyma połączenie, procesor nie śpi.
+        Wyłączanie przytrzymaniem dolnego przycisku przez 2 s daje pobór rzędu µA, więc między
+        sesjami warto wyłączać, zamiast tylko odkładać.
+      </li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>Ogniwo Li-Po — czego nie robić</h2>
+    <ul>
+      <li>Nie zostawiaj w rozgrzanym aucie na słońcu — to najprostszy sposób na spuchnięte ogniwo.</li>
+      <li>Nie przebijaj, nie zginaj, nie przyciskaj śrubą ani krawędzią obudowy.</li>
+      <li><strong>Spuchnięte ogniwo = koniec.</strong> Nie ładuj, nie prostuj — do punktu zbiórki.</li>
+      <li>Pierwsze ładowanie zrób przy sobie, nie na noc i nie na stercie papierów.</li>
+      <li>PCM w tym ogniwie pilnuje prądu i napięcia, ale nie uratuje przed uszkodzeniem
+        mechanicznym ani przed odwrotną biegunowością przy lutowaniu.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>Pierwszy test — czy wszystko gra</h2>
+    <ol>
+      <li>Włącz płytkę i RaceBoxa, poczekaj aż się połączą (ekran wejdzie w dashboard).</li>
+      <li>Wyjdź pod otwarte niebo. Po kilkudziesięciu sekundach <code>Fix</code> zmieni się
+        na <code>3D</code> (zielone) i wskoczy liczba satelitów. Pod dachem fixa nie będzie
+        w ogóle — to nie usterka.</li>
+      <li>Nazwa toru (pomarańczowa, na dole) ustawia się sama przy pierwszym fixie — wybierany
+        jest najbliższy tor z wbudowanej listy.</li>
+      <li>Pomiar czasu rusza przy pierwszym przecięciu linii startu/mety.</li>
+    </ol>
+    <p class="tip">
+      Pełny opis przycisków i trzech ekranów (dashboard, delta, lista okrążeń) jest
+      w <a href="./index.html">instrukcji obsługi</a>.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>A jeśli mojego toru nie ma na liście?</h2>
+    <p style="margin-bottom:0">
+      Tory są wkompilowane w firmware (lista pochodzi z bazy RaceBoxa i obejmuje większość
+      europejskich obiektów). Dodanie nowego wymaga zbudowania firmware ze źródeł — a repozytorium
+      jest prywatne, więc najprostsza droga to odezwać się do autora z nazwą toru i dwoma punktami
+      linii startu/mety. Nowa binarka pojawi się wtedy na stronie głównej i wystarczy ją wgrać
+      przez przeglądarkę.
+    </p>
+  </div>
+
+  <footer>
+    <p><a href="./index.html">← Wgrywanie firmware i instrukcja obsługi</a></p>
+    <p>PRÖÖT RACING :D</p>
+  </footer>
+</main>
+</body>
+</html>
